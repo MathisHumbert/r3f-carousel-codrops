@@ -1,26 +1,43 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useThree } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
-import { useControls } from 'leva';
+import { gsap } from 'gsap';
+// import { useControls } from 'leva';
 
-export default function Plane() {
+export default function Plane({ width, height, image, isActive }) {
   const meshRef = useRef();
   const { viewport } = useThree();
-  const texture = useTexture(
-    'https://raw.githubusercontent.com/supahfunk/webgl-carousel/main/public/img/1.jpg'
-  );
+  const texture = useTexture(image);
 
-  const { width, height } = useControls({
-    width: { value: 2, min: 0.5, max: viewport.width },
-    height: { value: 3, min: 0.5, max: viewport.height },
-  });
+  // const { width, height } = useControls({
+  //   width: { value: 2, min: 0.5, max: viewport.width },
+  //   height: { value: 3, min: 0.5, max: viewport.height },
+  // });
 
   useEffect(() => {
     if (meshRef.current.material) {
-      meshRef.current.material.uniforms.uRes.value.x = width;
-      meshRef.current.material.uniforms.uRes.value.y = height;
+      meshRef.current.material.uniforms.uZoomScale.value.x =
+        viewport.width / width;
+      meshRef.current.material.uniforms.uZoomScale.value.y =
+        viewport.height / height;
+
+      gsap.to(meshRef.current.material.uniforms.uRes.value, {
+        x: isActive ? viewport.width : width,
+        y: isActive ? viewport.height : height,
+        duration: 2.5,
+        ease: 'power3.out',
+      });
+
+      gsap.to(meshRef.current.material.uniforms.uProgress, {
+        value: isActive ? 1 : 0,
+        duration: 2.5,
+        ease: 'power3.out',
+      });
+
+      // meshRef.current.material.uniforms.uRes.value.x = width;
+      // meshRef.current.material.uniforms.uRes.value.y = height;
     }
-  }, [viewport, width, height]);
+  }, [viewport, isActive]);
 
   const shaderArgs = useMemo(() => {
     return {
@@ -33,14 +50,26 @@ export default function Plane() {
             y: texture.source.data.height,
           },
         },
+        uZoomScale: { value: { x: 0, y: 0 } },
+        uProgress: { value: 0 },
       },
       vertexShader: /* glsl */ `
+      uniform vec2 uZoomScale;
+      uniform float uProgress;
+      
       varying vec2 vUv;
 
       void main(){
         vUv = uv;
-        
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.);
+
+        vec3 pos = position;
+        float angle = uProgress * 3.14159265 / 2.;
+        float wave = cos(angle);
+        float c = sin(length(uv - 0.5) * 15. + uProgress * 12.) * .5 + .5;
+        pos.x *= mix(1., uZoomScale.x + wave * c, uProgress);
+        pos.y *= mix(1., uZoomScale.y + wave * c, uProgress);
+
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.);
       }
       `,
       fragmentShader: /* glsl */ `
