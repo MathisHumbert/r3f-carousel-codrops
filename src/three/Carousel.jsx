@@ -41,6 +41,10 @@ export default function Carousel() {
   }, [root]);
 
   useEffect(() => {
+    document.body.classList.remove('loading');
+  }, []);
+
+  useEffect(() => {
     if (!items) return;
 
     if (activePlane !== null && prevActivePlane === null) {

@@ -100,7 +100,6 @@ export default function Plane({ width, height, image, isActive }) {
         vec4 texture = texture2D(uTexture, uv);
 
         gl_FragColor = texture;
-        // gl_FragColor = vec4(1., 0., 0., 1.);
       }
       `,
     };
